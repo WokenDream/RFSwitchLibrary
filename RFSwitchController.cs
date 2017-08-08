@@ -9,7 +9,7 @@ using FT_HANDLE = System.UInt32;
 
 namespace RFSwitchLibrary
 {
-    public class RFSwitchController
+    public static class RFSwitchController
     {
         public const UInt32 FT_BAUD_300 = 300;
         public const UInt32 FT_BAUD_600 = 600;
@@ -64,7 +64,7 @@ namespace RFSwitchLibrary
         public const UInt32 FT_EVENT_RXCHAR = 1;
         public const UInt32 FT_EVENT_MODEM_STATUS = 2;
 
-        public unsafe bool SwitchToPathFor(String EvalBoard)
+        public static unsafe bool SwitchToPathFor(String EvalBoard, int numOfAttempts)
         {
             const string ChannelA = "DLP232M A";
             //const string ChannelB = "DLP232M B";
@@ -86,6 +86,11 @@ namespace RFSwitchLibrary
                 default:
                     throw new Exception(" \"B\" stands for Barium, and \"X\" stands for Xenon");
             }
+            if (numOfAttempts < 2)
+            {
+                Console.WriteLine("numOfAttempts: {0} has to be greater than 1", numOfAttempts);
+                numOfAttempts = 2;
+            }
             byte[] DataRead = { 0 };
 
             try
@@ -106,10 +111,10 @@ namespace RFSwitchLibrary
                             continue; // we only use channel A
                         }
 
+                        int attempt = 0;
                         do
                         {
-                            Console.WriteLine(" {0} Not euqal", i);
-
+                            Console.WriteLine("attempt: {0}", attempt);
                             FT.OpenEx(temp_name, FT_OPEN_BY_DESCRIPTION, ref ftHandle); //open device by description
                             FT.SetBitMode(ftHandle, Mask, Enable); //enter Bit Bang mode, and set all the 8 pins to output
                             System.Threading.Thread.Sleep(50);
@@ -121,8 +126,8 @@ namespace RFSwitchLibrary
                             FT.Read(ftHandle, data_read, (FT_HANDLE)DataRead.Length, ref NumByteRead); //read volts back from pins
 
                             FT.Close(ftHandle);
-                        } while (DataRead[0] != DataSet[0]);
-                        Console.WriteLine(" {0} euqal", i);
+                            ++attempt;
+                        } while (DataRead[0] != DataSet[0] && attempt < numOfAttempts);
                     }
                 }
             }
@@ -132,7 +137,7 @@ namespace RFSwitchLibrary
                 return false;
             }
 
-            return true;
+            return DataRead[0] == DataSet[0];
         }
     }
 }
